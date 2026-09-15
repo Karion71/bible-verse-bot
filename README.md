@@ -16,7 +16,7 @@
 2. 이 폴더를 그 저장소에 푸시합니다.
 3. 저장소 **Settings → Secrets and variables → Actions → New repository secret** 에서 아래 4개를 등록합니다.
    - `TELEGRAM_BOT_TOKEN`
-   - `TELEGRAM_CHAT_ID`
+   - `TELEGRAM_CHAT_ID` (여러 그룹에 보내려면 쉼표로 구분: `-1001111111111,-1002222222222`)
    - `GOOGLE_SHEET_ID`
    - `GOOGLE_SHEET_GID`
 4. **Actions** 탭에서 "Send daily verse" 워크플로우를 확인합니다. 매일 21:00 UTC(=06:00 KST)에 자동 실행됩니다.

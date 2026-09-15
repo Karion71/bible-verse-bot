@@ -13,7 +13,9 @@ from datetime import date
 import requests
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+# 여러 그룹에 보내려면 TELEGRAM_CHAT_ID 값에 쉼표로 구분해서 여러 chat_id를 넣는다.
+# 예: -1003998809133,-1003775402640
+CHAT_IDS = [c.strip() for c in os.environ["TELEGRAM_CHAT_ID"].split(",") if c.strip()]
 SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
 SHEET_GID = os.environ.get("GOOGLE_SHEET_GID", "0")
 # 이 날짜를 1번째(순서상 첫 줄) 성구가 나가는 날로 고정한다.
@@ -38,13 +40,13 @@ def fetch_verses():
     return verses
 
 
-def send_telegram_message(text):
+def send_telegram_message(chat_id, text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    resp = requests.post(url, data={"chat_id": CHAT_ID, "text": text}, timeout=20)
+    resp = requests.post(url, data={"chat_id": chat_id, "text": text}, timeout=20)
     resp.raise_for_status()
     result = resp.json()
     if not result.get("ok"):
-        raise RuntimeError(f"텔레그램 전송 실패: {result}")
+        raise RuntimeError(f"텔레그램 전송 실패 (chat_id={chat_id}): {result}")
 
 
 def main():
@@ -56,8 +58,16 @@ def main():
     today_str = date.today().strftime("%Y-%m-%d")
     message = f"[오늘의 성구] {today_str}\n\n{verse['title']}\n{verse['content']}"
 
-    send_telegram_message(message)
-    print(f"전송 완료 (index={idx}): {verse['title']}")
+    errors = []
+    for chat_id in CHAT_IDS:
+        try:
+            send_telegram_message(chat_id, message)
+            print(f"전송 완료 (chat_id={chat_id}, index={idx}): {verse['title']}")
+        except Exception as e:
+            errors.append(str(e))
+            print(f"전송 실패 (chat_id={chat_id}): {e}")
+    if errors:
+        raise RuntimeError("; ".join(errors))
 
 
 if __name__ == "__main__":

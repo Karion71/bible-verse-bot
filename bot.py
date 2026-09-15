@@ -22,7 +22,9 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
-CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
+# 여러 그룹에 보내려면 .env의 TELEGRAM_CHAT_ID 값에 쉼표로 구분해서 여러 chat_id를 넣는다.
+# 예: -1003998809133,-1003775402640
+CHAT_IDS = [c.strip() for c in os.environ["TELEGRAM_CHAT_ID"].split(",") if c.strip()]
 SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
 SHEET_GID = os.environ.get("GOOGLE_SHEET_GID", "0")
 SEND_HOUR = int(os.environ.get("SEND_HOUR", "6"))
@@ -67,13 +69,13 @@ def save_state(state):
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def send_telegram_message(text):
+def send_telegram_message(chat_id, text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    resp = requests.post(url, data={"chat_id": CHAT_ID, "text": text}, timeout=20)
+    resp = requests.post(url, data={"chat_id": chat_id, "text": text}, timeout=20)
     resp.raise_for_status()
     result = resp.json()
     if not result.get("ok"):
-        raise RuntimeError(f"텔레그램 전송 실패: {result}")
+        raise RuntimeError(f"텔레그램 전송 실패 (chat_id={chat_id}): {result}")
 
 
 def send_daily_verse():
@@ -86,8 +88,9 @@ def send_daily_verse():
         today = datetime.now().strftime("%Y-%m-%d")
         message = f"[오늘의 성구] {today}\n\n{verse['title']}\n{verse['content']}"
 
-        send_telegram_message(message)
-        log.info("전송 완료 (index=%d): %s", idx, verse["title"])
+        for chat_id in CHAT_IDS:
+            send_telegram_message(chat_id, message)
+            log.info("전송 완료 (chat_id=%s, index=%d): %s", chat_id, idx, verse["title"])
 
         state["next_index"] = (idx + 1) % len(verses)
         save_state(state)
