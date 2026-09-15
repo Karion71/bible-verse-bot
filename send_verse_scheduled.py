@@ -25,6 +25,7 @@ CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&
 def fetch_verses():
     resp = requests.get(CSV_URL, timeout=20)
     resp.raise_for_status()
+    resp.encoding = "utf-8"  # 구글 시트 응답에 charset이 없어 requests가 잘못 추측하는 것을 방지
     reader = csv.DictReader(io.StringIO(resp.text))
     verses = []
     for row in reader:
