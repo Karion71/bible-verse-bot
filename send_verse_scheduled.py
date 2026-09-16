@@ -8,9 +8,12 @@ GitHub Actions 등 '매일 1회 실행 후 종료'되는 환경에서 쓰는 버
 import csv
 import io
 import os
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 import requests
+
+KST = ZoneInfo("Asia/Seoul")
 
 BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 # 여러 그룹에 보내려면 TELEGRAM_CHAT_ID 값에 쉼표로 구분해서 여러 chat_id를 넣는다.
@@ -20,6 +23,12 @@ SHEET_ID = os.environ["GOOGLE_SHEET_ID"]
 SHEET_GID = os.environ.get("GOOGLE_SHEET_GID", "0")
 # 이 날짜를 1번째(순서상 첫 줄) 성구가 나가는 날로 고정한다.
 START_DATE = date.fromisoformat(os.environ.get("START_DATE", "2026-09-15"))
+
+
+def today_kst():
+    # GitHub Actions 등 실행 서버는 UTC로 동작하므로, date.today()를 그대로 쓰면
+    # 한국시간 00:00~08:59 구간에는 날짜가 하루 전으로 잘못 계산된다.
+    return datetime.now(KST).date()
 
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={SHEET_GID}"
 
@@ -51,11 +60,12 @@ def send_telegram_message(chat_id, text):
 
 def main():
     verses = fetch_verses()
-    days_elapsed = (date.today() - START_DATE).days
+    today = today_kst()
+    days_elapsed = (today - START_DATE).days
     idx = days_elapsed % len(verses)
     verse = verses[idx]
 
-    today_str = date.today().strftime("%Y-%m-%d")
+    today_str = today.strftime("%Y-%m-%d")
     message = f"[오늘의 성구] {today_str}\n\n{verse['title']}\n{verse['content']}"
 
     errors = []
