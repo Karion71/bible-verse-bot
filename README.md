@@ -19,10 +19,28 @@
    - `TELEGRAM_CHAT_ID` (여러 그룹에 보내려면 쉼표로 구분: `-1001111111111,-1002222222222`)
    - `GOOGLE_SHEET_ID`
    - `GOOGLE_SHEET_GID`
-4. **Actions** 탭에서 "Send daily verse" 워크플로우를 확인합니다. 매일 21:00 UTC(=06:00 KST)에 자동 실행됩니다.
-   - 우측 상단 **Run workflow** 버튼으로 즉시 테스트 실행도 가능합니다.
-   - GitHub 무료 cron은 서버 상황에 따라 몇 분~십수 분 정도 밀릴 수 있습니다(정각 보장 아님).
+4. **Actions** 탭에서 "Send daily verse" 워크플로우를 확인합니다. 우측 상단 **Run workflow** 버튼으로 즉시 테스트 실행이 가능합니다.
 5. 시작 기준일은 `send_verse_scheduled.py`의 `START_DATE`(기본 2026-09-15)로 계산합니다. 필요하면 워크플로우 env에 `START_DATE` 시크릿/변수를 추가해 조정하세요.
+
+### 매일 정확한 시각에 실행되게 하기 (외부 크론 → repository_dispatch)
+
+GitHub의 `schedule` 트리거는 내부 대기열이 붐빌 때 **몇 시간까지도 지연**될 수 있습니다(GitHub 공식 문서에 명시된 한계). 이 워크플로우는 그래서 `schedule` 대신 `repository_dispatch` 이벤트로 실행되도록 되어 있고, 외부의 정확한 무료 크론 서비스가 매일 정해진 시각에 GitHub API를 호출해 이 이벤트를 쏴줍니다. `workflow_dispatch`/`repository_dispatch`는 위 대기열을 타지 않아 API 호출 즉시(수 초~1분 내) 실행됩니다.
+
+1. **GitHub 개인 액세스 토큰(PAT) 발급**
+   - GitHub → 우측 프로필 → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**
+   - Repository access: **Only select repositories** → 이 저장소만 선택
+   - Permissions → **Actions**: Read and write 로 설정
+   - 생성된 토큰 문자열을 안전한 곳에 복사해둡니다 (다시 볼 수 없음)
+2. **[cron-job.org](https://cron-job.org)** 등 무료 크론 서비스에 가입 후 새 작업 생성
+   - URL: `https://api.github.com/repos/Karion71/bible-verse-bot/dispatches`
+   - Method: `POST`
+   - Headers:
+     - `Authorization: Bearer <위에서 만든 토큰>`
+     - `Accept: application/vnd.github+json`
+     - `Content-Type: application/json`
+   - Body(JSON): `{"event_type": "send-verse"}`
+   - 실행 시각: 매일 06:05, 시간대 **Asia/Seoul**
+3. 저장 후 "Test run"으로 한 번 호출해보고, GitHub **Actions** 탭에 워크플로우 실행이 즉시 뜨는지 확인합니다.
 
 ## 방식 B. 이 PC에서 24시간 프로세스로 실행
 
