@@ -52,8 +52,9 @@ def fetch_verses():
     for row in reader:
         title = (row.get("성구 제목") or "").strip()
         content = (row.get("성구 내용") or "").strip()
+        quote = (row.get("생명의 어록") or "").strip()
         if title or content:
-            verses.append({"title": title, "content": content})
+            verses.append({"title": title, "content": content, "quote": quote})
     if not verses:
         raise ValueError("시트에서 성구를 하나도 읽어오지 못했습니다. 열 이름을 확인하세요.")
     return verses
@@ -87,6 +88,8 @@ def send_daily_verse():
 
         today = datetime.now().strftime("%Y-%m-%d")
         message = f"[오늘의 성구] {today}\n\n{verse['title']}\n{verse['content']}"
+        if verse["quote"]:
+            message += f"\n\n<생명의 어록>\n\"{verse['quote']}\""
 
         for chat_id in CHAT_IDS:
             send_telegram_message(chat_id, message)
